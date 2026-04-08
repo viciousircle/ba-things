@@ -1,0 +1,109 @@
+import { Steps } from "nextra/components";
+
+# Nhập - Xuất và quản lý vòng đời Chip định danh
+
+Tài liệu này mô tả cách Tomotek quản lý toàn bộ vòng đời chip định danh, từ lúc nhập kho từ Nhà máy, lưu kho tại Tomotek, phân phối ký gửi tới Clinic, đến khi chip được kích hoạt trên thú cưng.
+
+Hệ thống quản lý theo `Serial Number (S/N)` duy nhất cho từng chip, đồng thời tối ưu vận hành dựa trên quy cách đóng gói để kiểm kê và xuất nhập số lượng lớn.
+
+## Quy ước quản lý
+
+### Đơn vị đóng gói (Hierarchy)
+
+- **Thùng (Box):** Đơn vị chứa lớn nhất.
+- **Túi (Bag):** Mỗi túi chứa cố định 5 kim tiêm chip.
+- **Chip (S/N):** Đơn vị nhỏ nhất, mỗi kim có 1 mã duy nhất.
+
+### Trạng thái chip (Status lifecycle)
+
+| Trạng thái           | Ý nghĩa                                    |
+| -------------------- | ------------------------------------------ |
+| `Available`          | Chip đang ở kho tổng Tomotek               |
+| `In-Clinic`          | Chip đã giao cho Clinic nhưng chưa sử dụng |
+| `Activated`          | Chip đã được tiêm cho thú cưng             |
+| `Returned`           | Chip từ Clinic trả về kho tổng TMT         |
+| `Problem by TMT`     | Hỏng/mất do Tomotek (vận hành)             |
+| `Problem by Clinic`  | Hỏng/mất tại Clinic                        |
+| `Problem by Factory` | Hỏng/mất tại Nhà máy                       |
+
+### Trùng lặp khi nhập
+
+- Hiện tượng trùng lặp khi nhập là KHÔNG CÓ. Do đó, chúng ta sẽ không có Case trùng lặp trong nghiệp vụ này.
+- Lý do: Do bên nhà máy đã phải check trùng lặp trước khi xuất xưởng
+
+## Quy trình nhập kho (Nhà máy đến TOMOTEK)
+
+### Dữ liệu đầu vào
+
+Nhập hàng loạt qua file Excel (Packing List), gồm:
+
+| Ngày nhập  | Tên lô hàng  | Mã thùng | Mã túi  | Mã serial number | Ngày hết hạn |
+| ---------- | ------------ | -------- | ------- | ---------------- | ------------ |
+| 2026-04-08 | LO-2026-04-A | BOX-001  | BAG-001 | SN-0000001       | 2029-04-08   |
+
+### Logic xử lý
+
+1. Hệ thống đọc file và đếm tổng số chip.
+2. Tạo mới chip hợp lệ với trạng thái `Available`.
+
+## Quy trình xuất kho ký gửi (TOMOTEK đến Clinic)
+
+> [!NOTE]
+>
+> Mô hình là **ký gửi vật tư**. Hệ thống này **không quản lý đơn giá nhập/xuất và công nợ chip**.
+
+<Steps>
+### Tạo đợt phân bổ
+
+Admin thực hiện cơ chế **Push** theo danh sách bàn giao thực tế.
+
+### Chọn hình thức xuất
+
+- **Xuất theo thùng:** chọn mã thùng, toàn bộ chip trong thùng chuyển sang `In-Clinic`.
+- **Xuất theo túi:** chọn danh sách mã túi lẻ (mỗi túi 5 chip).
+
+### Kiểm tra ràng buộc trước khi xác nhận
+
+- Chỉ chip trạng thái `Available` mới được xuất.
+- Danh sách chip lỗi/hỏng phải được loại khỏi đợt giao.
+
+### Chốt bàn giao
+
+Hệ thống tự động sinh danh sách `S/N` để đính kèm phiếu giao hàng.
+</Steps>
+
+## Quản lý tại Clinic (Activation & Loss)
+
+<Steps>
+### Kích hoạt chip khi định danh thành công
+
+Khi Clinic hoàn tất quy trình định danh (US-CLI-02), chip tự động chuyển sang `Activated` và ghi nhận ID thú cưng, ngày kích hoạt.
+
+### Cập nhật mất/hỏng tại Clinic
+
+Khi phát sinh sự cố, Clinic hoặc Admin cập nhật trạng thái chip sang `Problem by Clinic`. Chip sẽ bị loại khỏi danh sách khả dụng.
+
+### Nhập trả về kho tổng
+
+Với chip chưa sử dụng trả lại từ Clinic, Admin nhập trả và cập nhật trạng thái từ `In-Clinic` sang `Returned`.
+</Steps>
+
+## Báo cáo và đối soát
+
+| Nhóm báo cáo | Mục đích |
+| --- | --- |
+| Tồn kho tổng | Thống kê số lượng chip theo từng trạng thái (`Available`, `Returned`, `Problem by TMT`, `Problem by Clinic`...) |
+| Tồn kho Clinic | Xem Clinic đang giữ bao nhiêu túi/chip, số đã kích hoạt, số lỗi/hỏng |
+| Hành trình chip | Tra cứu 1 mã `S/N` theo toàn bộ vòng đời: nhập lô, xuất cho Clinic, kích hoạt trên thú cưng |
+| Đối soát hoa hồng | Module riêng, tính hoa hồng dịch vụ dựa trên số chip đã `Activated` |
+
+## Quy tắc nghiệp vụ bắt buộc
+
+> [!WARNING]
+>
+> Các quy tắc dưới đây là bắt buộc để đảm bảo tính toàn vẹn dữ liệu.
+
+- Không xóa chip tại bước nhập kho, để luôn có dữ liệu đối soát.
+- Một `Serial Number` chỉ được kích hoạt cho **một thú cưng duy nhất**.
+- Trạng thái `Activated` phải được cập nhật tự động khi đơn định danh hoàn tất.
+- Chip ở trạng thái lỗi/hỏng không được đưa vào luồng xuất kho hoặc kích hoạt.

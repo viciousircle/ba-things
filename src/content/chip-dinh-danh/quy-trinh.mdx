@@ -1,0 +1,32 @@
+import { Steps } from "nextra/components";
+
+# Quy trình triển khai gắn Chip
+
+> Quy trình dưới đây áp dụng cho luồng định danh tại Clinic, thực hiện tuần tự theo từng thú cưng.
+
+<Steps>
+### Kiểm tra hồ sơ chủ nuôi
+
+Đối chiếu thông tin chủ nuôi với giấy tờ tùy thân. Nếu hồ sơ (CCCD) còn thiếu, bổ sung đủ thông tin bắt buộc trước khi thao tác gắn chip.
+
+### Chọn thú cưng cần định danh
+
+Chỉ chọn các thú cưng đang ở trạng thái **Chưa định danh**. Nếu khách có thêm thú cưng chưa có trên hệ thống, tạo nhanh hồ sơ cơ bản để tiếp tục xử lý.
+
+### Cấy chip cho thú cưng
+
+Sử dụng kim tiêm chuyên dụng để đưa chip vào dưới da (thường là vùng giữa hai xương bả vai). Thao tác cần đúng kỹ thuật và đúng quy trình an toàn.
+
+### Nhập và xác thực mã Chip ID
+
+Quét hoặc nhập tay `Chip ID`, sau đó kiểm tra trùng lặp trên toàn hệ thống. Nếu mã đã tồn tại, không cho phép lưu và yêu cầu đổi chip hợp lệ.
+
+### Cập nhật hồ sơ định danh
+
+Hoàn thiện dữ liệu cho thú cưng: ảnh định danh, thông tin tiêm và nhân sự thực hiện. Sau đó nhấn hoàn tất để lưu dữ liệu cho thú cưng đó.
+
+### Đồng bộ và thông báo cho chủ nuôi
+
+Sau khi lưu thành công, hệ thống cập nhật trạng thái thú cưng sang **Đã định danh**, đồng bộ dữ liệu về App và gửi thông báo cho chủ nuôi.
+
+</Steps>

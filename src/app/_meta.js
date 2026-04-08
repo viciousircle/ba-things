@@ -1,12 +1,12 @@
 const meta = {
-  index: {
-    type: "page",
-    title: "Home",
-  },
-  docs: {
-    type: "page",
-    title: "Documentation",
-  },
+    index: {
+        type: "page",
+        title: "Trang chủ",
+    },
+    docs: {
+        type: "page",
+        title: "ILU PET Docs",
+    },
 };
 
 export default meta;

@@ -1,9 +1,8 @@
 const meta = {
-  index: "",
-  "get-started": "",
-  features: "",
-  themes: "",
-  advanced: "",
+    index: "",
+    "chip-dinh-danh": {
+        title: "Chip Định Danh Thú cưng ",
+    },
 };
 
 export default meta;
