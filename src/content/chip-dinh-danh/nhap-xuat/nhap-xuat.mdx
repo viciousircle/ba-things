@@ -1,0 +1,118 @@
+import { Steps } from "nextra/components";
+
+# Nhập - Xuất và quản lý vòng đời Chip định danh
+
+Tài liệu này mô tả cách Tomotek quản lý toàn bộ vòng đời chip định danh, từ lúc nhập kho từ Nhà máy, lưu kho tại Tomotek, phân phối ký gửi tới Clinic, đến khi chip được kích hoạt trên thú cưng.
+
+Hệ thống quản lý theo `Serial Number (S/N)` duy nhất cho từng chip; nhập hàng loạt qua file Excel (mỗi dòng một chip). Xuất ký gửi theo **đợt**, với **số lượng mỗi Clinic là bội số của 5** để khớp đóng gói thực tế (5 chip/túi); hệ thống **không** lưu mã thùng/túi.
+
+## Quy ước quản lý
+
+### Thuộc tính chip trên file Excel
+
+Mỗi chip được ghi nhận với các trường sau (khớp cột file nhập):
+
+- **Model:** Loại/model chip.
+- **ID:** Mã định danh theo dữ liệu nhà máy (nếu có).
+- **SN No.:** Serial number duy nhất của kim chip.
+- **Expiry Date:** Ngày hết hạn.
+
+### Trạng thái chip (Status lifecycle)
+
+| Trạng thái           | Ý nghĩa                                         |
+| -------------------- | ----------------------------------------------- |
+| `Available`          | Chip đang ở kho tổng Tomotek                    |
+| `In-Clinic`          | Chip đã/đang giao cho Clinic nhưng chưa sử dụng |
+| `Activated`          | Chip đã được tiêm cho thú cưng                  |
+| `Returned`           | Chip chưa sử dụng được Clinic trả về kho tổng TMT |
+| `Problem by TMT`     | Hỏng/mất do Tomotek (vận hành)                  |
+| `Problem by Clinic`  | Hỏng/mất tại Clinic                             |
+| `Problem by Factory` | Hỏng/mất tại Nhà máy                            |
+
+### Trùng lặp khi nhập
+
+- Hiện tượng trùng lặp khi nhập là KHÔNG CÓ. Do đó, chúng ta sẽ không có Case trùng lặp trong nghiệp vụ này.
+- Lý do: Do bên nhà máy đã phải check trùng lặp trước khi xuất xưởng
+
+## Quy trình nhập kho (Nhà máy đến TOMOTEK)
+
+### Dữ liệu đầu vào
+
+Nhập hàng loạt qua file Excel, các cột bắt buộc ví dụ:
+
+| Model          | ID              | SN No.          | Expiry Date |
+| -------------- | --------------- | --------------- | ----------- |
+| ISO11784 FDX-B | 900215010438900 | 900215010438900 | 2029-04-13  |
+
+### Logic xử lý
+
+1. Hệ thống đọc file và đếm tổng số chip.
+2. Tạo mới chip hợp lệ với trạng thái `Available`.
+
+## Quy trình xuất kho ký gửi (TOMOTEK đến Clinic)
+
+> [!NOTE]
+>
+> Mô hình là **ký gửi vật tư**. Hệ thống này **không quản lý đơn giá nhập/xuất và công nợ chip**. Ngoài đời, chip thường đóng **5 kim/túi**; theo quy ước đóng gói của Nhà máy, mỗi túi thường rơi vào cụm **chữ số cuối của `SN No.`** dạng **`1-5`** hoặc **`6-0`**. Phần mềm dùng quy tắc đó để **sinh danh sách xuất** (ưu tiên gom các `SN No.` liên tiếp và “đủ cụm” theo `1-5`/`6-0` khi tồn kho cho phép), không bắt buộc lưu mã túi trên hệ thống.
+
+<Steps>
+### Tạo đợt phân bổ
+
+Admin tạo một **đợt xuất ký gửi hàng loạt** và chọn **danh sách các Clinic** nhận ký gửi trong đợt đó (cơ chế **Push** theo kế hoạch/bàn giao).
+
+### Nhập số lượng ký gửi theo từng Clinic
+
+Với **mỗi Clinic** trong đợt, nhập **số lượng chip** cần ký gửi.
+
+- Số lượng **chỉ được phép chia hết cho 5** (bội số của 5), tương ứng bàn giao theo **túi 5 chip** ngoài thực tế.
+
+### Kiểm tra ràng buộc trước khi chốt đợt
+
+- Tổng nhu cầu các Clinic **không vượt quá** tồn chip `Available`.
+- Chỉ chip `Available` được gán vào đợt; chip thuộc các trạng thái `Problem by ...` **không** được xuất.
+
+### Chốt đợt và sinh danh sách ký gửi theo Clinic
+
+Sau khi **chốt đợt**, hệ thống:
+
+- Tự động **gán chip** cho từng Clinic theo số lượng đã nhập và chuyển các chip đó sang `In-Clinic`.
+- **Sinh danh sách** cho **từng đơn ký gửi** của **từng Clinic** (danh sách `SN No.` in/đính kèm phiếu giao — **một đơn tương ứng một Clinic trong đợt**).
+- Khi xử lý tồn kho, **ưu tiên** chọn các mã `SN No.` **liên tiếp** và **gom thành nhóm 5** (một túi logic) sao cho khớp cụm chữ số cuối **`1-5`** hoặc **`6-0`**; nếu tồn kho không còn đủ dải liên tiếp/đủ cụm (ví dụ đã xuất lẻ trước đó), hệ thống vẫn đủ **đúng số lượng** nhưng có thể ghép **nhiều đoạn** `SN No.`.
+
+</Steps>
+
+## Quản lý tại Clinic (Activation & Loss)
+
+<Steps>
+### Kích hoạt chip khi định danh thành công
+
+Khi Clinic hoàn tất quy trình định danh (US-CLI-02), chip tự động chuyển sang `Activated` và ghi nhận ID thú cưng, ngày kích hoạt.
+
+### Cập nhật mất/hỏng tại Clinic
+
+Khi phát sinh sự cố, Clinic hoặc Admin cập nhật trạng thái chip sang `Problem by Clinic`. Chip sẽ bị loại khỏi danh sách khả dụng.
+
+### Nhập trả về kho tổng
+
+Với chip chưa sử dụng trả lại từ Clinic, Admin nhập trả và cập nhật trạng thái từ `In-Clinic` sang `Returned`.
+
+</Steps>
+
+## Báo cáo và đối soát
+
+| Nhóm báo cáo    | Mục đích                                                                                                        |
+| --------------- | --------------------------------------------------------------------------------------------------------------- |
+| Tồn kho tổng    | Thống kê số lượng chip theo từng trạng thái (`Available`, `Returned`, `Problem by TMT`, `Problem by Clinic`...) |
+| Tồn kho Clinic  | Xem Clinic đang giữ bao nhiêu chip, số đã kích hoạt, số lỗi/hỏng                                                |
+| Hành trình chip | Tra cứu 1 mã `S/N` theo toàn bộ vòng đời: nhập lô, xuất cho Clinic, kích hoạt trên thú cưng                     |
+
+## Quy tắc nghiệp vụ bắt buộc
+
+> [!WARNING]
+>
+> Các quy tắc dưới đây là bắt buộc để đảm bảo tính toàn vẹn dữ liệu.
+
+- Không xóa chip, để luôn có dữ liệu đối soát.
+- Một `Serial Number` chỉ được kích hoạt cho **một thú cưng duy nhất**.
+- Trạng thái `Activated` phải được cập nhật tự động khi đơn định danh hoàn tất.
+- Chip ở trạng thái có vấn đề `Problem by ...` không được đưa vào luồng xuất kho (by TMT/Factory) hoặc kích hoạt (by All).

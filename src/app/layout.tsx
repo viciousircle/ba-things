@@ -7,11 +7,11 @@ import "nextra-theme-docs/style.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-    title: "Nextra 4",
-    description: "Nextra 4 is here.",
+    title: "BA THINGS",
+    description: "BA THINGS by Viciousircle",
 };
 
-const banner = <Banner storageKey="some-key">Nextra 4.0 is released 🎉</Banner>;
+const banner = <Banner storageKey="some-key">Xin chào các tình yêu 🎉</Banner>;
 const footer = (
     <Footer>MIT {new Date().getFullYear()} © BA THINGS by Viciousircle.</Footer>
 );

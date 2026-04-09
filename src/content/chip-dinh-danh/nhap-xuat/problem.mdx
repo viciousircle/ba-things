@@ -1,0 +1,101 @@
+# Các vấn đề của Chip
+
+Trang này mô tả đầy đủ các tình huống liên quan đến chip khi phát sinh sự cố hoặc trả hàng trong vòng đời ký gửi (xem [Nhập - Xuất (Ký gửi)](./nhap-xuat)). Mục tiêu là thống nhất **ai thực hiện**, **điều kiện chuyển trạng thái**, và **cách ghi nhận trên hệ thống**.
+
+## Trạng thái liên quan (tóm tắt)
+
+| Trạng thái           | Ý nghĩa nghiệp vụ                                                       |
+| -------------------- | ----------------------------------------------------------------------- |
+| `Returned`           | Chip chưa sử dụng được Clinic trả về kho tổng Tomotek                   |
+| `Problem by Clinic`  | Hỏng/mất phát sinh khi chip đang thuộc phạm vi Clinic                   |
+| `Problem by TMT`     | Hỏng/mất do vận hành Tomotek (kho, kiểm đếm, bàn giao nội bộ...)       |
+| `Problem by Factory` | Hỏng/mất/sai lệch được xác định gắn với nguồn hàng hoặc lỗi từ Nhà máy |
+
+## Quy tắc chung về người thực hiện
+
+- Người có quyền cập nhật trạng thái trong các luồng dưới đây là **Admin**.
+- Clinic là bên phát sinh/đề xuất xử lý, nhưng thao tác đổi trạng thái trên hệ thống được ghi nhận bởi **Admin** để đảm bảo đối soát tập trung.
+
+## `Problem by Clinic`
+
+**Bối cảnh:** Sự cố hỏng/mất phát sinh khi chip đang nằm trong phạm vi Clinic.
+
+**Điều kiện chuyển trạng thái:**
+
+- Chỉ chip đang ở `In-Clinic` mới được chuyển sang `Problem by Clinic`.
+
+**Người thực hiện:** `Admin`
+
+**Cập nhật trên hệ thống:**
+
+- Admin cập nhật trạng thái chip từ `In-Clinic` sang `Problem by Clinic`.
+- Bắt buộc ghi **lý do** (mô tả ngắn, có thể kèm mã biên bản/phiếu nếu có) để phục vụ audit và truy vết `SN No.`.
+
+**Hướng xử lý ngoài hệ thống:**
+
+- Trường hợp mất/hỏng do Clinic, phần **bồi thường tiền** là nghiệp vụ ngoài hệ thống (hợp đồng, kế toán, công nợ).
+
+## `Returned` (Đổi/Trả chip về kho tổng)
+
+**Bối cảnh:** Clinic trả lại chip chưa sử dụng về kho tổng Tomotek. Đây là luồng vận hành bình thường, không phải nhóm “chip có vấn đề”.
+
+**Điều kiện chuyển trạng thái:**
+
+- Chỉ chip đang ở `In-Clinic` mới được chuyển sang `Returned`.
+- Chip hỏng/mất không đi luồng `Returned`; phải dùng trạng thái `Problem by ...` phù hợp.
+
+**Người thực hiện:** `Admin`
+
+**Cập nhật trên hệ thống:**
+
+- Admin thực hiện nhập trả và cập nhật trạng thái từ `In-Clinic` sang `Returned`.
+- Ghi nhận thông tin bàn giao/đối soát theo phiếu trả để đảm bảo khớp tồn kho.
+
+**Hướng xử lý:**
+
+- Cho phép đổi/trả theo quy ước vận hành giữa Tomotek và Clinic khi còn cơ sở bàn giao vật lý/đối soát được.
+
+## `Problem by TMT`
+
+**Bối cảnh:** Hỏng/mất xảy ra trong các khâu Tomotek quản lý (nhận, lưu kho, kiểm đếm, bàn giao nội bộ...).
+
+**Điều kiện chuyển trạng thái:**
+
+- Chip đang thuộc kho/phạm vi quản lý Tomotek, thường ở `Available` hoặc `Returned`.
+
+**Người thực hiện:** `Admin`
+
+**Cập nhật trên hệ thống:**
+
+- Admin cập nhật sang `Problem by TMT` và ghi rõ **lý do**.
+- Chip đã vào `Problem by TMT` không được quay lại luồng xuất hoặc kích hoạt.
+
+**Hướng xử lý:**
+
+- Rà soát nội bộ quy trình và trách nhiệm bộ phận để giảm tái diễn.
+- Nếu phát hiện nguyên nhân gốc từ lô hàng nhà máy, có thể **liên kết đối soát** với nhóm `Problem by Factory` (nghiệp vụ với Nhà máy vẫn thực hiện theo hợp đồng; hệ thống giữ dấu vết trạng thái và lý do).
+
+## `Problem by Factory`
+
+**Bối cảnh:** Hỏng/mất hoặc sai lệch gắn với nguồn Nhà máy (lô hàng, chất lượng sản phẩm, packing list…).
+
+**Điều kiện chuyển trạng thái:**
+
+- Có cơ sở đối soát/biên bản xác nhận nguyên nhân từ Nhà máy (lỗi lô, sai lệch dữ liệu, chất lượng...).
+
+**Người thực hiện:** `Admin`
+
+**Cập nhật trên hệ thống:**
+
+- Admin cập nhật chip (hoặc tập chip theo lô) sang `Problem by Factory` kèm **lý do** và thông tin tham chiếu đối soát.
+
+**Hướng xử lý:**
+
+- Đối soát và xử lý **theo hợp đồng/thỏa thuận** với Nhà máy (đổi lô, bồi hoàn…); phần tiền và cam kết pháp lý **ngoài phạm vi** mô-đun quản lý chip nếu không được mở rộng thiết kế.
+
+## Nguyên tắc ghi nhận trên hệ thống
+
+- Mọi chuyển trạng thái trong các luồng trên do **Admin** thực hiện.
+- Mỗi chip sự cố phải có **trạng thái đúng nhóm** (`Problem by Clinic` / `Problem by TMT` / `Problem by Factory`) và **lý do** bắt buộc để audit và báo cáo nhất quán.
+- **Bồi thường tiền** (đặc biệt khi mất tại Clinic) **không thay thế** bước cập nhật trạng thái chip: sổ sách vật tư và tiền tệ là hai lớp nghiệp vụ; hệ thống chip ưu tiên **đúng số lượng và vòng đời** từng `SN No.`.
+- Không xóa bản ghi chip để “làm sạch” sự cố; chỉ chuyển trạng thái và ghi nhận lý do, phù hợp quy tắc tại [Nhập - Xuất](./nhap-xuat).

@@ -2,11 +2,16 @@ const meta = {
     "gioi-thieu": {
         title: "Giới thiệu chung",
     },
-    "quy-trinh": {
-        title: "Quy trình định danh",
-    },
     "nhap-xuat": {
         title: "Nhập - Xuất (Ký gửi)",
+    },
+
+    "dinh-danh": {
+        title: "Định danh thú cưng",
+    },
+
+    "user-stories": {
+        title: "User Stories",
     },
 };
 
