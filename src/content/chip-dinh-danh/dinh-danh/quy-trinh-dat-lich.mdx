@@ -1,0 +1,373 @@
+import { Steps } from "nextra/components";
+
+# Quy trình đặt lịch hẹn & Định danh thú cưng
+
+> Tài liệu này mô tả **quy trình nghiệp vụ** cho việc đặt lịch hẹn và định danh thú cưng tại clinic, áp dụng cho các vai trò: **Chủ nuôi (Pet Owner)**, **Lễ tân (Receptionist)** và **Bác sĩ (Doctor)**.
+
+---
+
+## Tổng quan 2 luồng nghiệp vụ
+
+```mermaid
+flowchart TD
+    subgraph Luồng 1: Chủ nuôi chuẩn bị trên App
+        A1[Tìm hiểu chip & chọn clinic] --> A2[Tạo cuộc hẹn QR]
+        A2 --> A3{Định danh bản thân?}
+        A3 -->|Tùy chọn| A4[Cung cấp CCCD trên App]
+        A3 -->|Không làm| A5[Mang thú cưng đến clinic]
+        A4 --> A5
+    end
+
+    subgraph Luồng 2: Clinic thực hiện
+        A5 --> B1[Lễ tân quét QR]
+        B1 --> B2{Chủ nuôi đã có thông tin?}
+        B2 -->|Chưa| B3[Lễ tân nhập thông tin từ CCCD]
+        B2 -->|Rồi| B4[Đối chiếu với CCCD thực tế]
+        B3 --> B5[Chuyển sang hàng chờ]
+        B4 --> B5
+        B5 --> C1[Bác sĩ nhấn Định danh]
+        C1 --> C2[Hệ thống khóa appointment]
+        C2 --> C3{Thú cưng đã có hồ sơ?}
+        C3 -->|Chưa| C4[Bác sĩ tạo hồ sơ thú cưng]
+        C3 -->|Rồi| C5[Chọn thú cưng từ danh sách]
+        C4 --> C5
+        C5 --> C6[Cấy chip + quét mã]
+        C6 --> C7{Mã chip hợp lệ?}
+        C7 -->|Không| C6
+        C7 -->|Có| C8[Chụp 4 ảnh định danh]
+        C8 --> C9[Nhập thông tin tiêm]
+        C9 --> C10[Hoàn tất thú cưng]
+        C10 --> C11{Còn thú chưa định danh?}
+        C11 -->|Còn| C5
+        C11 -->|Hết| D1[Appointment hoàn tất]
+        D1 --> D2[Thông báo cho chủ nuôi]
+    end
+
+    style A1 fill:#e1f5ff
+    style A2 fill:#e1f5ff
+    style A3 fill:#e1f5ff
+    style A4 fill:#e1f5ff
+    style A5 fill:#fff3e0
+    style B1 fill:#fff3e0
+    style B2 fill:#fff3e0
+    style B3 fill:#fff3e0
+    style B4 fill:#fff3e0
+    style B5 fill:#fff3e0
+    style C1 fill:#e8f5e9
+    style C2 fill:#e8f5e9
+    style C3 fill:#e8f5e9
+    style C4 fill:#e8f5e9
+    style C5 fill:#e8f5e9
+    style C6 fill:#e8f5e9
+    style C7 fill:#e8f5e9
+    style C8 fill:#e8f5e9
+    style C9 fill:#e8f5e9
+    style C10 fill:#e8f5e9
+    style C11 fill:#e8f5e9
+    style D1 fill:#c8e6c9
+    style D2 fill:#c8e6c9
+```
+
+**Luồng 1: Chủ nuôi chuẩn bị trên App** (xanh dương)
+
+- Tìm hiểu về chip định danh và chọn clinic
+- Tạo cuộc hẹn (mã QR dựa trên Owner + Clinic + Thời điểm)
+- Định danh bản thân (tùy chọn)
+
+**Luồng 2: Clinic thực hiện** (cam + xanh lá)
+
+- Lễ tân: Kiểm tra chủ nuôi → Chuyển sang hàng chờ
+- Bác sĩ: Tạo hồ sơ thú cưng (nếu chưa có) → Định danh từng thú → Hoàn tất
+
+---
+
+## Luồng 1: Chủ nuôi chuẩn bị trên App
+
+### Bước 1: Tìm hiểu về Chip định danh & Chọn Clinic
+
+**Mục tiêu:** Giúp chủ nuôi hiểu về lợi ích chip định danh và tìm clinic phù hợp.
+
+**Quy trình:**
+
+1. Chủ nuôi mở App, vào mục "Phòng khám hỗ trợ"
+2. Xem danh sách clinic trên bản đồ hoặc dạng list
+3. Sử dụng bộ lọc: khoảng cách, đánh giá, dịch vụ, giờ làm việc
+4. Xem chi tiết clinic: địa chỉ, SĐT, hình ảnh, đánh giá
+5. Nhấn "Chọn clinic này" để tiếp tục
+
+**Tham chiếu:** [US-OWN-07](./us-own-07)
+
+### Bước 2: Tạo cuộc hẹn định danh (QR Code)
+
+**Mục tiêu:** Tạo mã QR duy nhất để clinic nhận diện cuộc hẹn.
+
+**Quy trình:**
+
+1. Chủ nuôi chọn clinic muốn đến
+2. Nhấn "Tạo cuộc hẹn" → Hệ thống sinh mã QR duy nhất dựa trên:
+    - **Thông tin chủ nuôi** (đã đăng nhập)
+    - **Clinic đã chọn**
+    - **Thời điểm nhấn "Tạo cuộc hẹn"**
+3. Lưu mã QR (chụp màn hình hoặc chia sẻ)
+
+**Điểm khác biệt quan trọng:**
+
+- ❌ **KHÔNG cần chọn thú cưng trước**
+- ✅ Chủ nuôi sẽ mang **tất cả thú cưng cần định danh** đến clinic
+- ✅ **Bác sĩ** sẽ hỗ trợ tạo hồ sơ thú cưng tại phòng khám (nếu chưa có)
+
+**Trạng thái cuộc hẹn:**
+
+| Trạng thái         | Ý nghĩa                                      |
+| ------------------ | -------------------------------------------- |
+| **Chờ đến**        | Mới tạo, chưa đến clinic                     |
+| **Đã đến clinic**  | Lễ tân đã xác nhận check-in                  |
+| **Trong hàng chờ** | Hồ sơ chủ nuôi đã kiểm tra, chờ bác sĩ       |
+| **Đang thực hiện** | Bác sĩ đang thực hiện định danh              |
+| **Đã hoàn tất**    | Tất cả thú cưng đã được định danh thành công |
+| **Đã hủy**         | Cuộc hẹn bị hủy                              |
+
+**Quy tắc nghiệp vụ:**
+
+- Mã định danh có giá trị trong **4 ngày** kể từ ngày tạo
+- Chỉ sử dụng tại **clinic đã chọn** khi tạo
+- **Giới hạn:** Một chủ nuôi chỉ có tối đa **01 appointment hoạt động** tại một thời điểm
+    - Không thể tạo appointment mới khi đang có appointment ở trạng thái: `Chờ đến`, `Đã đến clinic`, `Trong hàng chờ`, hoặc `Đang thực hiện`
+    - Chỉ được tạo appointment mới khi appointment hiện tại đã ở trạng thái: `Đã hoàn tất`, `Đã hủy`, hoặc `Hết hạn`
+
+**Tham chiếu:** [US-OWN-05](./us-own-05)
+
+### Bước 3: Định danh bản thân (TÙY CHỌN)
+
+**Mục tiêu:** Chủ nuôi cung cấp thông tin CCCD trên App để tiết kiệm thời gian tại clinic.
+
+**Quy trình (nếu thực hiện):**
+
+1. Vào mục "Định danh cá nhân" trong App
+2. Nhập thông tin: họ tên, số CCCD, ngày cấp, nơi cấp, SĐT
+3. Upload ảnh CCCD mặt trước và mặt sau
+4. Hệ thống sử dụng OCR để xác thực thông tin
+5. Nếu thành công → Trạng thái "Đã định danh"
+
+**Tham chiếu:** [US-OWN-06](./us-own-06)
+
+> **Lưu ý:** Đây là bước **TÙY CHỌN**. Nếu chủ nuôi chưa làm, lễ tân sẽ hỗ trợ xác minh và nhập thông tin trực tiếp tại clinic.
+
+---
+
+## Luồng 2: Clinic thực hiện
+
+### Phần A: Lễ tân kiểm tra hồ sơ
+
+#### A1. Check-in tại quầy lễ tân
+
+**Quy trình:**
+
+1. Chủ nuôi đến clinic, xuất trình mã QR hoặc đọc mã số định danh
+2. Lễ tân quét mã hoặc tra cứu mã số
+3. Hệ thống hiển thị thông tin appointment và chủ nuôi
+
+#### A2. Xác minh danh tính chủ nuôi
+
+**Trường hợp 1: Chủ nuôi đã cung cấp thông tin trên App**
+
+- Lễ tân đối chiếu thông tin trên hệ thống với CCCD thực tế
+- Nếu khớp → Xác nhận và tiếp tục
+- Nếu không khớp → Lễ tân cập nhật thông tin
+
+**Trường hợp 2: Chủ nuôi CHƯA cung cấp thông tin trên App**
+
+- Lễ tân yêu cầu chủ nuôi xuất trình CCCD
+- Lễ tân nhập thông tin mới vào hệ thống
+- Chủ nuôi xác nhận thông tin đã nhập
+
+> **Lưu ý:** Lễ tân **KHÔNG** tạo hồ sơ thú cưng. Việc này sẽ do **bác sĩ** thực hiện.
+
+#### A3. Chuyển sang hàng chờ
+
+**Quy trình:**
+
+1. Lễ tân kiểm tra lại thông tin chủ nuôi
+2. Nhấn "Chuyển sang hàng chờ"
+3. Appointment chuyển từ "Chờ đến" → **"Trong hàng chờ"**
+4. Hệ thống gửi thông báo đến bác sĩ
+
+**Quy tắc nghiệp vụ:**
+
+- Chỉ lễ tân mới có quyền kiểm tra và chuyển appointment sang "Trong hàng chờ"
+- Lễ tân có thể cập nhật thông tin chủ nuôi tại clinic bằng cách yêu cầu xuất trình CCCD
+- Chủ nuôi không thể tự chuyển appointment sang "Trong hàng chờ"
+
+**Tham chiếu:** [US-CLI-04](./us-cli-04)
+
+---
+
+### Phần B: Bác sĩ thực hiện định danh
+
+#### B1. Xem danh sách hàng chờ
+
+- Bác sĩ kiểm tra danh sách appointment "Trong hàng chờ"
+- Thông tin hiển thị: mã appointment, tên chủ nuôi, SĐT
+
+#### B2. Thực hiện định danh
+
+**Quy trình:**
+
+1. Bác sĩ chọn appointment trong danh sách hàng chờ
+2. Nhấn nút **"Định danh"**:
+    - Hệ thống **khóa appointment** và gán cho bác sĩ
+    - Ngăn các bác sĩ khác truy cập appointment này
+    - Appointment chuyển sang "Đang thực hiện"
+
+#### B3. Tạo hồ sơ thú cưng (nếu chưa có)
+
+**Quy trình:**
+
+1. Bác sĩ kiểm tra xem thú cưng đã có hồ sơ trong hệ thống chưa
+2. Nếu chưa có → Bác sĩ tạo nhanh hồ sơ thú cưng tại phòng khám:
+    - Tên thú cưng (có thể để tạm)
+    - Loài (Species): Chó, Mèo, v.v.
+    - Giống (Breed): Có thể chọn hoặc để "Không rõ"
+    - Ảnh đại diện (tùy chọn, có thể chụp sau)
+    - Ghi chú (nếu có)
+3. Có thể tạo nhiều hồ sơ thú cưng cho cùng một chủ nuôi trong cùng appointment
+4. Thú cưng mới tạo sẽ có trạng thái **"Chưa định danh"** và được thêm vào danh sách chờ định danh
+
+#### B4. Định danh từng thú cưng
+
+**Quy trình cho mỗi thú cưng:**
+
+1. **Chọn thú cưng** từ danh sách "Chưa định danh"
+2. **Cấy chip và quét mã chip**
+3. **Kiểm tra trùng lặp mã chip** trên hệ thống
+    - Nếu trùng → Cảnh báo, yêu cầu đổi chip
+    - Nếu hợp lệ → Tiếp tục
+4. **Chụp 4 ảnh định danh** (trực diện, góc trái, góc phải, đặc điểm)
+5. **Nhập thông tin tiêm chủng**
+6. **Nhấn "Hoàn tất định danh thú cưng này"**
+7. Thú cưng chuyển từ "Chưa định danh" → **"Đã định danh"**
+8. Hệ thống **quay lại danh sách** để chọn thú tiếp theo
+
+#### B5. Hoàn tất appointment
+
+- Khi tất cả thú cưng đã định danh → Appointment chuyển sang **"Đã hoàn tất"**
+- Hệ thống gửi thông báo cho chủ nuôi
+- Dữ liệu được đồng bộ lên hệ thống
+
+**Quy tắc nghiệp vụ:**
+
+- Chỉ bác sĩ mới có quyền thực hiện định danh
+- **Bác sĩ có quyền tạo hồ sơ thú cưng mới** (lễ tân không làm việc này)
+- Mỗi thú cưng phải có đủ 4 ảnh định danh mới được hoàn tất
+- Mã chip phải là duy nhất trên toàn hệ thống
+- Khi bác sĩ nhấn "Định danh", hệ thống khóa appointment chống trùng lặp
+- Sau khi hoàn tất một thú cưng, hệ thống tự động quay lại danh sách để chọn thú tiếp theo
+
+**Tham chiếu:** [US-CLI-05](./us-cli-05)
+
+---
+
+## Sơ đồ trình tự tổng quát
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Owner as Chủ nuôi
+    actor Receptionist as Lễ tân
+    actor Doctor as Bác sĩ
+    participant App as Mobile App
+    participant UI as Clinic Portal
+    participant Service as System Service
+    participant DB as Database
+
+    %% Luồng 1: Chủ nuôi chuẩn bị
+    Note over Owner,DB: LUỒNG 1: Chủ nuôi chuẩn bị trên App
+    Owner->>App: Tìm hiểu chip & chọn clinic
+    Owner->>App: Nhấn Tạo cuộc hẹn
+    App->>Service: Kiểm tra điều kiện tạo appointment
+    Service->>DB: Kiểm tra appointment đang hoạt động
+    DB-->>Service: Trả về kết quả
+    alt Được phép tạo
+        Service->>DB: Tạo appointment (QR = Owner + Clinic + Timestamp)
+        DB-->>Service: Xác nhận
+        Service-->>App: Trả về mã QR
+        App-->>Owner: Hiển thị QR Code
+    end
+
+    opt Định danh bản thân (OPTIONAL)
+        Owner->>App: Cung cấp thông tin CCCD
+        App->>Service: Upload thông tin và ảnh
+        Service->>DB: Lưu với status = "Đã định danh"
+    end
+
+    %% Luồng 2: Clinic thực hiện
+    Note over Owner,DB: LUỒNG 2: Clinic thực hiện
+    Owner->>Receptionist: Đến clinic + xuất trình QR
+    Receptionist->>UI: Quét QR
+    UI->>Service: Truy vấn appointment
+    Service->>DB: Lấy thông tin
+    DB-->>Service: Trả về
+    Service-->>UI: Hiển thị
+
+    alt Chủ nuôi chưa có thông tin
+        Receptionist->>UI: Nhập thông tin từ CCCD
+        UI->>Service: Lưu thông tin
+        Service->>DB: Tạo hồ sơ chủ nuôi
+    end
+
+    Receptionist->>UI: Nhấn Chuyển sang hàng chờ
+    UI->>Service: Update status = "Trong hàng chờ"
+    Service->>DB: Cập nhật
+    Service->>Doctor: Thông báo
+
+    Note over Doctor,DB: Bác sĩ thực hiện định danh
+    Doctor->>UI: Chọn appointment + nhấn Định danh
+    UI->>Service: Khóa appointment
+    Service->>DB: Update status = "Đang thực hiện"
+
+    opt Thú cưng chưa có hồ sơ
+        Doctor->>UI: Tạo hồ sơ thú cưng
+        UI->>Service: Lưu pet profile
+        Service->>DB: Insert
+    end
+
+    loop Với mỗi thú cưng chưa định danh
+        Doctor->>UI: Chọn thú cưng
+        Doctor->>UI: Quét mã chip
+        UI->>Service: Kiểm tra trùng lặp
+        Service->>DB: Query chip ID
+        DB-->>Service: Kết quả
+
+        Doctor->>UI: Chụp 4 ảnh
+        Doctor->>UI: Nhập thông tin tiêm
+        Doctor->>UI: Nhấn Hoàn tất
+        UI->>Service: Update pet = "Đã định danh"
+        Service->>DB: Lưu
+    end
+
+    Service->>DB: Update appointment = "Đã hoàn tất"
+    Service->>Owner: Gửi thông báo
+```
+
+---
+
+## Trạng thái Appointment
+
+| Trạng thái         | Mô tả                                  | Vai trò chuyển                     |
+| ------------------ | -------------------------------------- | ---------------------------------- |
+| **Chờ đến**        | Appointment mới tạo, chưa đến clinic   | Chủ nuôi tạo trên App              |
+| **Đã đến clinic**  | Lễ tân đã xác nhận check-in            | Lễ tân quét QR                     |
+| **Trong hàng chờ** | Hồ sơ chủ nuôi đã kiểm tra, chờ bác sĩ | Lễ tân nhấn "Chuyển sang hàng chờ" |
+| **Đang thực hiện** | Bác sĩ đang thực hiện định danh        | Bác sĩ nhấn "Định danh"            |
+| **Đã hoàn tất**    | Tất cả thú cưng đã định danh           | Hệ thống tự động                   |
+| **Đã hủy**         | Appointment bị hủy                     | Chủ nuôi trên App                  |
+
+---
+
+## Tài liệu tham khảo
+
+- [US-OWN-05: Tạo cuộc hẹn định danh thú cưng](./us-own-05)
+- [US-OWN-06: Định danh bản thân (TÙY CHỌN)](./us-own-06)
+- [US-OWN-07: Tìm hiểu về Chip định danh & Phòng khám hỗ trợ](./us-own-07)
+- [US-CLI-04: Lễ tân - Kiểm tra hồ sơ chủ nuôi](./us-cli-04)
+- [US-CLI-05: Bác sĩ - Thực hiện cấy chip và hoàn thiện hồ sơ](./us-cli-05)

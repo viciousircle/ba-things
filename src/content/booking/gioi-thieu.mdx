@@ -1,0 +1,59 @@
+# Giới thiệu Hệ thống Đặt lịch
+
+Hệ thống Đặt lịch của **ILU PET** kết nối Chủ nuôi (Pet Owners) với các Cơ sở dịch vụ (Merchants). Hệ thống được thiết kế để giải quyết bài toán điều phối nhân sự và tài nguyên, tối ưu hóa năng suất nhân sự và minh bạch hóa trải nghiệm chăm sóc thú cưng.
+
+## Tổng quan nghiệp vụ
+
+Hệ thống Booking vận hành dựa trên nguyên tắc kết hợp giữa **Tài nguyên có sẵn** (Nhân viên, phòng trống, thời gian) và **Nhu cầu khách hàng**. Thay vì quản lý lịch hẹn thủ công, Tomotek số hóa toàn bộ quy trình từ khâu tìm kiếm, giữ chỗ cho đến khi hoàn tất dịch vụ và thanh toán.
+
+Mục tiêu cốt lõi của hệ thống là: **"Đúng người - Đúng việc - Đúng thời điểm"**.
+
+## Những giá trị
+
+Hệ thống sở hữu những đặc tính kỹ thuật chuyên sâu giúp phân biệt với các ứng dụng đặt lịch thông thường:
+
+- **Quản lý Slot thời gian thực (Smart Slot):** Tự động tính toán các khung giờ khả dụng dựa trên cấu hình giờ mở cửa của cửa hàng và các lịch hẹn đã tồn tại, tránh tình trạng đặt trùng chỗ (Double-booking).
+- **Tự động gán nhân sự (Auto-assign):** Hệ thống tự động tìm kiếm và chỉ định nhân viên phù hợp dựa trên kỹ năng (Skills) tương ứng với dịch vụ và loài thú cưng (Chó/Mèo).
+- **Cơ chế giữ chỗ tạm thời (Soft Lock):** Khi khách hàng đang thao tác đặt lịch, hệ thống sẽ tạm giữ chỗ trong một khoảng thời gian ngắn (5-10 phút) để đảm bảo tài nguyên không bị chiếm dụng bởi người khác trước khi khách hoàn tất thủ tục.
+- **Hệ thống mã màu trực quan (Color Coding):** Toàn bộ trạng thái vận hành được chuẩn hóa bằng màu sắc, giúp Merchant nắm bắt tình hình cửa hàng chỉ trong vài giây.
+
+## Phân loại hai dịch vụ chính
+
+Hệ thống phân tách rõ ràng hai luồng nghiệp vụ đặc thù để xử lý các thuật toán khác nhau:
+
+### Dịch vụ Đặt theo Giờ (Time-based Services)
+
+Áp dụng cho các dịch vụ ngắn hạn, kết thúc trong ngày như: Grooming (Tắm sấy, cắt tỉa), Spa, Khám bệnh định kỳ.
+
+- **Cấu trúc đặt:** Chọn [Số lượng thú] -> [Chọn ngày] -> [Chọn khung giờ trống].
+- **Logic tài nguyên:** Phụ thuộc trực tiếp vào khung giờ làm việc và kỹ năng của nhân viên (Staff Availability).
+
+### Dịch vụ Lưu trú (Lodging & Boarding)
+
+Áp dụng cho mô hình Khách sạn thú cưng hoặc trông giữ dài ngày.
+
+- **Cấu trúc đặt:** Chọn [Ngày nhận thú] và [Ngày trả thú] (Date-range).
+- **Logic tài nguyên:** Tập trung vào việc kiểm soát sức chứa lồng hoặc phòng trống (Room/Cage Availability) thay vì quản lý theo khung giờ của từng nhân viên.
+
+## Quy trình vận hành chuẩn
+
+1.  **Tìm kiếm & Khám phá:** Pet Owner lọc dịch vụ theo vị trí, đánh giá và bảng giá của các Merchant.
+2.  **Thiết lập lịch hẹn:** Khách hàng cung cấp thông tin thú cưng và chọn thời điểm phù hợp. Hệ thống thực hiện "Soft Lock" tài nguyên.
+3.  **Xác nhận đơn:** Merchant tiếp nhận thông báo, kiểm tra và chuyển trạng thái sang "Đã xác nhận". Lúc này nhân viên phù hợp nhất sẽ được gán vào lịch.
+4.  **Thực hiện dịch vụ:** Theo dõi tiến độ qua các trạng thái "Check-in" và "Đang thực hiện".
+5.  **Hoàn tất & Lưu trữ:** Sau khi hoàn thành, hệ thống tự động sinh hóa đơn (Bill). Toàn bộ hành trình chăm sóc được lưu vào hồ sơ số của thú cưng để phục vụ việc tái đặt lịch (Re-order) sau này.
+
+## Hệ thống trạng thái và Mã màu chuẩn hóa
+
+Để tối ưu hóa việc quản lý, hệ thống quy định các trạng thái tương ứng với màu sắc cụ thể:
+
+- **Vàng (Pending):** Chờ xác nhận - Đơn mới từ khách hàng cần Merchant xử lý.
+- **Hồng (Confirmed):** Đã xác nhận - Lịch hẹn đã hợp lệ và được gán tài nguyên.
+- **Xanh dương (Processing):** Đang thực hiện - Thú cưng đã có mặt và đang sử dụng dịch vụ.
+- **Xanh lá (Done):** Hoàn thành - Dịch vụ kết thúc thành công.
+- **Đỏ (Cancelled):** Đã hủy - Đơn bị hủy bởi khách hàng hoặc Merchant.
+- **Xám đậm (No-show):** Vắng mặt - Khách không đến đúng giờ hẹn.
+
+---
+
+_Tài liệu này là cơ sở để hiểu rõ luồng đi của dữ liệu trong toàn bộ module Booking của Tomotek._

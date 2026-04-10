@@ -63,6 +63,33 @@ Hệ thống thực hiện kiểm tra qua hai lớp bảo vệ:
     - Số lượng thất bại (Failed) kèm danh sách vị trí dòng lỗi và lý do chi tiết.
 - **Lưu vết (Audit Log):** Hệ thống ghi lại nhật ký lịch sử nhập kho bao gồm: Người thực hiện, thời gian, tên file gốc và kết quả tổng hợp để phục vụ đối soát.
 
+### Sơ đồ luồng nhập kho (Flowchart)
+
+```mermaid
+flowchart TD
+    A[Admin vào màn hình Quản lý kho] --> B[Nhấn nút Nhập kho]
+    B --> C[Chọn file Excel]
+    C --> D{File có đúng định dạng?}
+    D -->|Không| E[Báo lỗi: Định dạng không hợp lệ]
+    E --> C
+    D -->|Có| F[Upload file lên hệ thống]
+    F --> G{Kiểm tra cấu trúc Header}
+    G -->|Thiếu cột| H[Báo lỗi: File sai cấu trúc mẫu]
+    H --> C
+    G -->|Đủ cột| I[Đọc và validate từng dòng]
+    I --> J{Dữ liệu hợp lệ?}
+    J -->|Không| K[Ghi nhận lỗi và bỏ qua dòng]
+    J -->|Có| L[Hiển thị preview cho Admin]
+    L --> M{Admin xác nhận?}
+    M -->|Không| N[Huỷ bỏ]
+    M -->|Có| O[Lưu dữ liệu vào DB]
+    O --> P[Tạo chip với status = Available]
+    P --> Q[Cập nhật tồn kho]
+    Q --> R[Hiển thị báo cáo kết quả]
+    K --> R
+    R --> S[Hoàn tất]
+```
+
 ---
 
 ### Quy trình vận hành (Workflow)
