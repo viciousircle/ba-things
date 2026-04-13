@@ -7,14 +7,12 @@ import "nextra-theme-docs/style.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-    title: "BA THINGS",
-    description: "BA THINGS by Viciousircle",
+    title: "ILU PET Docs",
+    description: "ILU PET Documentation",
 };
 
 const banner = <Banner storageKey="some-key">Xin chào các tình yêu 🎉</Banner>;
-const footer = (
-    <Footer>MIT {new Date().getFullYear()} © BA THINGS by Viciousircle.</Footer>
-);
+const footer = <Footer>MIT {new Date().getFullYear()} © ILU PET Docs.</Footer>;
 
 export default async function RootLayout({
     children,
@@ -31,7 +29,7 @@ export default async function RootLayout({
                         <Navbar
                             logo={
                                 <h1 className="text-2xl font-medium font-serif">
-                                    BA THINGS
+                                    ILU PET Docs
                                 </h1>
                             }
                             projectLink="https://github.com/viciousircle/"

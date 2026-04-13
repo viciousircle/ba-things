@@ -1,9 +1,12 @@
 const meta = {
-    "nhap-xuat": {
-        title: "Nhập - Xuất (Ký gửi)",
+    "tong-quan": {
+        title: "Tổng quan nhập-xuất",
+    },
+    "nhap-xuat-chi-tiet": {
+        title: "Quy trình nhập-xuất (chi tiết)",
     },
     problem: {
-        title: "Các vấn đề của Chip",
+        title: "Xử lý sự cố chip",
     },
 };
 

@@ -1,24 +1,14 @@
-import { Metadata } from "next";
-
-export const metadata: Metadata = {
-    title: "Nextra 4",
-    description: "Nextra 4 is here.",
+export const metadata = {
+    title: "ILU PET Docs",
+    description: "ILU PET Documentation",
 };
+
 export default function Home() {
     return (
-        <div className="flex items-center justify-center flex-col h-screen">
-            <div className="flex items-center justify-center flex-col">
-                <h1
-                    style={{
-                        textAlign: "center",
-                        fontSize: 64,
-                        margin: " 0",
-                        fontWeight: "bold",
-                    }}
-                >
-                    BA THINGS
-                </h1>
-                <div>by Viciousircle</div>
+        <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
+            <div className="text-center">
+                <h1 className="text-6xl font-bold">ILU PET Docs</h1>
+                <div className="mt-4 text-2xl">Documentation Site</div>
             </div>
         </div>
     );

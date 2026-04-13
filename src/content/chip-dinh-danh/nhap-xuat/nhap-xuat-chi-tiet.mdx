@@ -1,0 +1,211 @@
+import { Steps } from "nextra/components";
+
+# Nhập - Xuất và quản lý vòng đời Chip định danh
+
+Tài liệu này mô tả cách Tomotek quản lý toàn bộ vòng đời chip định danh, từ lúc nhập kho từ Nhà máy, lưu kho tại Tomotek, phân phối ký gửi tới Clinic, đến khi chip được kích hoạt trên thú cưng.
+
+Hệ thống quản lý theo `Serial Number (S/N)` duy nhất cho từng chip; nhập hàng loạt qua file Excel (mỗi dòng một chip). Xuất ký gửi theo **đợt**, với số lượng do Admin nhập cho từng Clinic; bên kho sẽ quét barcode để xác định chip cụ thể xuất cho mỗi Clinic.
+
+## Quy ước quản lý
+
+### Thuộc tính chip trên file Excel
+
+Mỗi chip được ghi nhận với các trường sau (khớp cột file nhập):
+
+- **Model:** Loại/model chip.
+- **ID:** Mã định danh theo dữ liệu nhà máy (nếu có).
+- **SN No.:** Serial number duy nhất của kim chip.
+- **Expiry Date:** Ngày hết hạn.
+
+### Trạng thái chip (Status lifecycle)
+
+| Trạng thái           | Ý nghĩa                                            |
+| -------------------- | -------------------------------------------------- |
+| `Available`          | Chip đang ở kho tổng Tomotek                       |
+| `Sending-to-Clinic`  | Chip đang trong quá trình gửi từ TMT đến Clinic    |
+| `In-Clinic`          | Chip đã được Clinic nhận và kiểm tra đầy đủ        |
+| `Activated`          | Chip đã được tiêm cho thú cưng                     |
+| `Returning`          | Chip đang trong quá trình trả về từ Clinic đến TMT |
+| `Returned`           | Chip đã về kho TMT và được kiểm tra                |
+| `Problem by TMT`     | Hỏng/mất do Tomotek (vận hành)                     |
+| `Problem by Clinic`  | Hỏng/mất tại Clinic                                |
+| `Problem by Factory` | Hỏng/mất tại Nhà máy                               |
+
+### Trùng lặp khi nhập
+
+- Hiện tượng trùng lặp khi nhập là KHÔNG CÓ. Do đó, chúng ta sẽ không có Case trùng lặp trong nghiệp vụ này.
+- Lý do: Do bên nhà máy đã phải check trùng lặp trước khi xuất xưởng
+
+## Quy trình nhập kho (Nhà máy đến TOMOTEK)
+
+### Dữ liệu đầu vào
+
+Nhập hàng loạt qua file Excel, các cột bắt buộc ví dụ:
+
+| Model          | ID              | SN No.          | Expiry Date |
+| -------------- | --------------- | --------------- | ----------- |
+| ISO11784 FDX-B | 900215010438900 | 900215010438900 | 2029-04-13  |
+
+### Logic xử lý
+
+1. Hệ thống đọc file và đếm tổng số chip.
+2. Tạo mới chip hợp lệ với trạng thái `Available`.
+
+## Quy trình xuất kho ký gửi (TOMOTEK đến Clinic)
+
+> [!NOTE]
+>
+> Mô hình là **ký gửi vật tư**. Hệ thống này **không quản lý đơn giá nhập/xuất và công nợ chip**. Quy trình xuất được đơn giản hóa: **bên kho tự quyết định chip nào sẽ xuất** bằng cách sử dụng máy quét barcode để quét từng chip, thay vì hệ thống tự động sinh danh sách.
+
+### Nguồn tạo đợt xuất
+
+Đợt xuất ký gửi có thể được tạo từ hai nguồn:
+
+1. **Thủ công (Push):** Admin tự chọn Clinic và nhập số lượng cần ký gửi theo kế hoạch/bàn giao.
+2. **Từ yêu cầu của Clinic (Pull):** Admin chọn các yêu cầu `Approved` để tự động tạo đợt xuất với số lượng bất biến theo nhu cầu thực tế của Clinic.
+
+### Trạng thái đơn xuất ký gửi (Export Order Status - per Clinic)
+
+Mỗi Clinic trong đợt xuất có một **đơn xuất ký gửi** với trạng thái riêng để theo dõi tiến độ:
+
+| Trạng thái           | Ý nghĩa                                            |
+| -------------------- | -------------------------------------------------- |
+| `Pending Scan`       | Chưa bắt đầu quét, chờ warehouse mở dialog quét    |
+| `Scanning`           | Đang trong quá trình quét chip cho Clinic này      |
+| `Completed`          | Đã quét đủ số lượng chip, sẵn sàng bàn giao        |
+| `Partially Received` | Clinic đã nhận nhưng báo thiếu                     |
+| `Fully Received`     | Clinic đã xác nhận nhận đủ chip                    |
+| `Cancelled`          | Đơn xuất bị hủy (do Admin hoặc Clinic hủy yêu cầu) |
+
+<Steps>
+### Tạo đợt phân bổ và chọn Clinic
+
+Admin tạo một **đợt xuất ký gửi hàng loạt** và chọn **nguồn tạo**:
+
+- **Thủ công:** Chọn **danh sách các Clinic** nhận ký gửi trong đợt đó (cơ chế **Push** theo kế hoạch/bàn giao).
+- **Từ yêu cầu:** Chọn các yêu cầu `Approved` từ Clinic (cơ chế **Pull** theo nhu cầu thực tế).
+
+### Nhập số lượng ký gửi cho từng Clinic
+
+- **Trường hợp thủ công:** Sau khi chọn danh sách Clinic, Admin nhập **số lượng chip** cần ký gửi cho **từng Clinic** (không bắt buộc bội số của 5).
+- **Trường hợp từ yêu cầu:** Hệ thống tự động điền Clinic và số lượng **bất biến** (không thể chỉnh sửa), phải khớp với số lượng đã duyệt trong yêu cầu.
+
+### Kiểm tra ràng buộc trước khi tiếp tục
+
+- Tổng nhu cầu các Clinic **không vượt quá** tồn chip `Available`.
+- Chỉ chip `Available` được gán vào đợt; chip thuộc các trạng thái `Problem by ...` **không** được xuất.
+
+### Quét chip xuất kho theo từng Clinic
+
+Sau khi nhấn **Tiếp tục**, hệ thống hiển thị **dialog quét chip cho từng Clinic**. Với mỗi Clinic:
+
+- **Hiển thị tiến độ:** Số chip đã quét / Tổng số lượng yêu cầu (ví dụ: `3/10`).
+- **Quét barcode:** Nhân viên kho sử dụng máy quét barcode để quét từng chip (`SN No.`).
+- **Ghi nhận ngay lập tức:** Mỗi lần quét thành công:
+    - Hệ thống thêm một hàng vào bảng danh sách chip gửi đi.
+    - Số lượng đã quét **tăng +1**.
+    - Chip chuyển trạng thái từ `Available` sang `Sending-to-Clinic`.
+    - Đơn xuất cập nhật trạng thái sang `Scanning`.
+- **Xóa chip đã quét:** Trong quá trình quét, nhân viên kho có thể xóa chip đã quét:
+    - **Cách thực hiện:** Nhấn nút **[Xóa]** cạnh mỗi hàng trong bảng danh sách chip.
+    - **Khi xóa thành công:**
+        - Chip bị xóa khỏi bảng danh sách.
+        - Số lượng đã quét **giảm -1**.
+        - Chip quay lại trạng thái `Available` (để có thể quét lại).
+        - Đơn xuất có thể quay lại `Scanning` nếu số lượng đã quét < số lượng yêu cầu.
+    - **Ràng buộc:** Chỉ được xóa khi đơn xuất chưa bàn giao cho Clinic (`Pending Scan` hoặc `Scanning`).
+- **Kiểm tra hợp lệ:** Hệ thống chỉ chấp nhận chip `Available`; chip đã quét trước đó hoặc chip `Problem by ...` sẽ bị từ chối với thông báo lỗi.
+- **Hoàn thành Clinic:** Khi quét đủ số lượng, hệ thống:
+    - Tự động khóa danh sách của Clinic đó.
+    - Cập nhật đơn xuất sang `Completed`.
+    - Cho phép chuyển sang dialog của Clinic tiếp theo.
+- **Sinh phiếu xuất:** Sau khi hoàn tất tất cả Clinic, hệ thống sinh **phiếu xuất kho ký gửi** cho từng Clinic (danh sách `SN No.` in/đính kèm phiếu giao).
+
+### Hoàn tất đợt xuất và bàn giao
+
+- Khi tất cả Clinic đã quét đủ, hệ thống tự động cập nhật đợt xuất sang `Completed`.
+- Clinic nhận chip và kiểm tra:
+    - **Nhận đủ:** Clinic xác nhận → đơn xuất chuyển sang `Fully Received`, chip chuyển sang `In-Clinic`.
+    - **Nhận thiếu:** Clinic báo thiếu → đơn xuất chuyển sang `Partially Received`, TMT gửi bù sau.
+
+</Steps>
+
+## Quy trình yêu cầu nhận ký gửi từ Clinic
+
+> [!NOTE]
+>
+> Clinic có thể chủ động tạo yêu cầu nhận chip ký gửi để gửi thông tin đến kho tổng về số lượng chip cần bổ sung.
+
+<Steps>
+### Tạo yêu cầu
+
+- Clinic vào màn hình Quản lý tồn kho và nhấn **[Tạo yêu cầu nhận chip]**.
+- Nhập thông tin: Số lượng, lý do, ghi chú, ngày mong nhận.
+- Hệ thống kiểm tra: Clinic chỉ có thể có **một yêu cầu pending** tại một thời điểm.
+
+### Admin xử lý yêu cầu
+
+- Admin xem danh sách yêu cầu và chọn xử lý:
+    - **Duyệt:** Xác nhận số lượng (có thể điều chỉnh) → `Approved`.
+    - **Từ chối:** Nhập lý do → `Rejected`.
+    - **Đưa vào đợt xuất:** Chọn hoặc tạo đợt xuất, số lượng **bất biến** → `In Export Round`.
+
+### Theo dõi và hoàn tất
+
+- Clinic theo dõi trạng thái yêu cầu trong danh sách.
+- Khi warehouse quét đủ chip và Clinic nhận đủ → yêu cầu chuyển sang `Fulfilled`.
+
+</Steps>
+
+## Quản lý tại Clinic (Activation & Loss)
+
+<Steps>
+### Nhận chip từ TMT
+
+Khi Clinic nhận được chip từ TMT, Clinic kiểm tra danh sách `SN No.`:
+
+- **Nếu nhận đủ:** Clinic xác nhận → chip chuyển từ `Sending-to-Clinic` sang `In-Clinic`
+- **Nếu nhận thiếu:** Clinic báo thiếu cho TMT, chip vẫn giữ ở `Sending-to-Clinic` để TMT gửi bù
+- **Sau khi gửi bù đủ:** Clinic xác nhận → chip chuyển sang `In-Clinic`
+
+### Kích hoạt chip khi định danh thành công
+
+Khi Clinic hoàn tất quy trình định danh (US-CLI-02), chip tự động chuyển sang `Activated` và ghi nhận ID thú cưng, ngày kích hoạt.
+
+### Cập nhật mất/hỏng tại Clinic
+
+Khi phát sinh sự cố, Clinic hoặc Admin cập nhật trạng thái chip sang `Problem by Clinic`. Chip sẽ bị loại khỏi danh sách khả dụng.
+
+### Yêu cầu trả chip về kho tổng
+
+Với chip chưa sử dụng cần trả lại, Clinic tạo yêu cầu trả chip. Hệ thống cập nhật trạng thái từ `In-Clinic` sang `Returning`.
+
+### TMT nhận chip trả về
+
+Khi TMT nhận được chip từ Clinic, TMT kiểm tra và cập nhật trạng thái:
+
+- Nếu chip tốt: chuyển từ `Returning` sang `Returned`
+- Nếu chip hỏng: chuyển từ `Returning` sang `Problem by Clinic`
+
+</Steps>
+
+## Báo cáo và đối soát
+
+| Nhóm báo cáo    | Mục đích                                                                                                        |
+| --------------- | --------------------------------------------------------------------------------------------------------------- |
+| Tồn kho tổng    | Thống kê số lượng chip theo từng trạng thái (`Available`, `Returned`, `Problem by TMT`, `Problem by Clinic`...) |
+| Tồn kho Clinic  | Xem Clinic đang giữ bao nhiêu chip, số đã kích hoạt, số lỗi/hỏng                                                |
+| Hành trình chip | Tra cứu 1 mã `S/N` theo toàn bộ vòng đời: nhập lô, xuất cho Clinic, kích hoạt trên thú cưng                     |
+
+## Quy tắc nghiệp vụ bắt buộc
+
+> [!WARNING]
+>
+> Các quy tắc dưới đây là bắt buộc để đảm bảo tính toàn vẹn dữ liệu.
+
+- Không xóa chip, để luôn có dữ liệu đối soát.
+- Một `Serial Number` chỉ được kích hoạt cho **một thú cưng duy nhất**.
+- Trạng thái `Activated` phải được cập nhật tự động khi đơn định danh hoàn tất.
+- Chip ở trạng thái có vấn đề `Problem by ...` không được đưa vào luồng xuất kho (by TMT/Factory) hoặc kích hoạt (by All).
+- Clinic chỉ có thể có **một yêu cầu pending** tại một thời điểm.
+- Số lượng trong đợt xuất từ yêu cầu **không thể chỉnh sửa** khi đã đưa vào đợt xuất.

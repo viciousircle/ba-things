@@ -1,0 +1,43 @@
+# Danh Sách User Stories
+
+## Theo Vai Trò
+
+| Vai trò                       | Mã US     | User Story                    | Tài liệu                             |
+| ----------------------------- | --------- | ----------------------------- | ------------------------------------ |
+| **👤 Chủ nuôi (Owner)**       | US-OWN-05 | Tạo cuộc hẹn định danh        | [Xem](../user-stories/OWN/us-own-05) |
+|                               | US-OWN-06 | Định danh bản thân (tùy chọn) | [Xem](../user-stories/OWN/us-own-06) |
+|                               | US-OWN-07 | Tìm hiểu chip & phòng khám    | [Xem](../user-stories/OWN/us-own-07) |
+| **🏥 Lễ tân/Bác sĩ (Clinic)** | US-CLI-03 | Quản lý tồn kho tại Clinic    | [Xem](../user-stories/CLI/us-cli-03) |
+|                               | US-CLI-04 | Lễ tân - Kiểm tra hồ sơ       | [Xem](../user-stories/CLI/us-cli-04) |
+|                               | US-CLI-05 | Bác sĩ - Cấy chip & hoàn tất  | [Xem](../user-stories/CLI/us-cli-05) |
+|                               | US-CLI-08 | Tạo yêu cầu nhận ký gửi       | [Xem](../user-stories/CLI/us-cli-08) |
+| **⚙️ Quản trị viên (Admin)**  | US-ADM-06 | Nhập kho chip                 | [Xem](../user-stories/ADM/us-adm-06) |
+|                               | US-ADM-07 | Xuất kho ký gửi               | [Xem](../user-stories/ADM/us-adm-07) |
+|                               | US-ADM-09 | Xử lý yêu cầu ký gửi          | [Xem](../user-stories/ADM/us-adm-09) |
+
+---
+
+## Theo Quy Trình
+
+### 📦 Nhập - Xuất Kho Chip (Ký gửi)
+
+| User Story                                 | Mô tả                                                      |
+| ------------------------------------------ | ---------------------------------------------------------- |
+| [US-ADM-06](../user-stories/ADM/us-adm-06) | Admin nhập file Excel để tạo chip ở trạng thái `Available` |
+| [US-ADM-07](../user-stories/ADM/us-adm-07) | Admin tạo đợt xuất, warehouse quét barcode cho từng Clinic |
+| [US-ADM-09](../user-stories/ADM/us-adm-09) | Admin xử lý yêu cầu nhận chip từ Clinic                    |
+| [US-CLI-03](../user-stories/CLI/us-cli-03) | Clinic quản lý tồn kho chip, báo cáo sự cố, trả chip       |
+| [US-CLI-08](../user-stories/CLI/us-cli-08) | Clinic tạo yêu cầu nhận chip ký gửi                        |
+
+### 🏥 Định Danh Thú Cưng
+
+| User Story                                 | Mô tả                                                   |
+| ------------------------------------------ | ------------------------------------------------------- |
+| [US-OWN-05](../user-stories/OWN/us-own-05) | Chủ nuôi tạo cuộc hẹn QR, không cần chọn thú cưng trước |
+| [US-OWN-06](../user-stories/OWN/us-own-06) | Chủ nuôi định danh bản thân trên App (tùy chọn)         |
+| [US-CLI-04](../user-stories/CLI/us-cli-04) | Lễ tân kiểm tra hồ sơ, chuyển sang hàng chờ             |
+| [US-CLI-05](../user-stories/CLI/us-cli-05) | Bác sĩ tạo hồ sơ thú cưng, cấy chip, chụp ảnh, hoàn tất |
+
+---
+
+> ⚠️ **User Stories cũ (tham khảo):** Xem [Notion](https://pickled-anger-a3d.notion.site/)
